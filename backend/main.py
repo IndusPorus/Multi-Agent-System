@@ -1,22 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from dotenv import load_dotenv
-from google import genai
-import os
 
-# Load .env
-load_dotenv()
+from routes.review_routes import router as review_router
+from routes.execute_routes import router as execute_router
 
-# Gemini Client
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
+app = FastAPI(
+    title="AI Code Review Platform",
+    version="1.0.0"
 )
 
-# FastAPI App
-app = FastAPI()
-
-# CORS
+# Enable CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,92 +18,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Request Body
-class CodeRequest(BaseModel):
-    code: str
-    language: str
+# Register Routes
+app.include_router(review_router)
+app.include_router(execute_router)
 
 
 @app.get("/")
 def home():
     return {
-        "message": "AI Code Reviewer Running"
+        "message": "AI Platform Running"
     }
-
-
-@app.post("/review")
-def review_code(request: CodeRequest):
-
-    # Empty input check
-    if not request.code.strip():
-        return {
-            "error": "Code input cannot be empty"
-        }
-
-    prompt = f"""
-You are an expert software engineer and code reviewer.
-
-Review this {request.language} code.
-
-Give response in these sections:
-
-1. Bugs
-2. Optimization Issues
-3. Readability Improvements
-4. Security Issues
-5. Final Recommendation
-
-Keep explanations beginner friendly.
-
-Code:
-{request.code}
-"""
-
-    try:
-
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=prompt
-        )
-
-        print("FULL GEMINI RESPONSE:")
-        print(response)
-
-        # SAFER RESPONSE HANDLING
-        review_text = ""
-
-        # Try extracting text safely
-        if hasattr(response, "text") and response.text:
-            review_text = response.text
-
-        # Backup extraction
-        elif (
-            hasattr(response, "candidates")
-            and response.candidates
-        ):
-            try:
-                review_text = (
-                    response.candidates[0]
-                    .content.parts[0]
-                    .text
-                )
-            except:
-                pass
-
-        # Final check
-        if not review_text:
-            return {
-                "error": "Gemini returned empty response"
-            }
-
-        return {
-            "review": review_text
-        }
-
-    except Exception as e:
-        print("ERROR:")
-        print(str(e))
-
-        return {
-            "error": str(e)
-        }

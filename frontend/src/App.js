@@ -75,9 +75,14 @@ function renderMarkdown(raw) {
 
 export default function App() {
   const [code, setCode] = useState("");
-  const [language, setLanguage] = useState("JavaScript");
+  const [language, setLanguage] = useState("Python");
+
   const [review, setReview] = useState("");
+  const [output, setOutput] = useState("");
+
   const [loading, setLoading] = useState(false);
+  const [executing, setExecuting] = useState(false);
+
   const [toast, setToast] = useState(null);
 
   const textareaRef = useRef(null);
@@ -94,7 +99,9 @@ export default function App() {
     return "http://127.0.0.1:8000";
   }, []);
 
+  // REVIEW CODE
   const reviewCode = async () => {
+
     if (!code.trim()) {
       notify("Paste some code first.", "error");
       return;
@@ -104,6 +111,7 @@ export default function App() {
     setReview("");
 
     try {
+
       const res = await fetch(`${apiBase}/review`, {
         method: "POST",
         headers: {
@@ -119,13 +127,17 @@ export default function App() {
 
       console.log("SERVER RESPONSE:", data);
 
-      if (!res.ok) {
-        setReview(data.error || "Backend error occurred.");
+      if (!res.ok || data.error) {
+
+        setReview(
+          data.error || "Backend error occurred."
+        );
+
         notify("Review failed.", "error");
+
         return;
       }
 
-      // HANDLE MULTIPLE POSSIBLE RESPONSE KEYS
       const finalReview =
         data.review ||
         data.response ||
@@ -134,18 +146,22 @@ export default function App() {
         "";
 
       if (!finalReview) {
+
         setReview(
           "Backend connected successfully but no review text was returned."
         );
 
         notify("Empty response from backend.", "error");
+
         return;
       }
 
       setReview(finalReview);
 
       notify("Review generated successfully!");
+
     } catch (err) {
+
       console.error(err);
 
       setReview(
@@ -153,12 +169,84 @@ export default function App() {
       );
 
       notify("Connection error.", "error");
+
     } finally {
+
       setLoading(false);
+
+    }
+  };
+
+  // EXECUTE CODE
+  const executeCode = async () => {
+
+    if (!code.trim()) {
+      notify("Paste some code first.", "error");
+      return;
+    }
+
+    setExecuting(true);
+    setOutput("");
+
+    try {
+
+      const res = await fetch(`${apiBase}/execute`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          code,
+          language,
+        }),
+      });
+
+      const data = await res.json();
+
+      console.log("EXECUTION RESPONSE:", data);
+
+      if (!res.ok || data.error) {
+
+        setOutput(
+          String(
+            data.error || "Execution failed."
+          )
+        );
+
+        notify("Execution failed.", "error");
+
+        return;
+      }
+
+      setOutput(
+        String(
+          data.output ||
+          data.error ||
+          "No output"
+        )
+      );
+
+      notify("Code executed!");
+
+    } catch (err) {
+
+      console.error(err);
+
+      setOutput(
+        `Cannot connect to backend at ${apiBase}`
+      );
+
+      notify("Execution error.", "error");
+
+    } finally {
+
+      setExecuting(false);
+
     }
   };
 
   const copyText = async (text, label) => {
+
     if (!text) return;
 
     await navigator.clipboard.writeText(text);
@@ -169,11 +257,14 @@ export default function App() {
   const clearAll = () => {
     setCode("");
     setReview("");
+    setOutput("");
     notify("Cleared.");
   };
 
   const handleKeyDown = (e) => {
+
     if (e.key === "Tab") {
+
       e.preventDefault();
 
       const s = e.target.selectionStart;
@@ -187,7 +278,9 @@ export default function App() {
       setCode(next);
 
       requestAnimationFrame(() => {
+
         if (textareaRef.current) {
+
           textareaRef.current.selectionStart =
             textareaRef.current.selectionEnd =
             s + 2;
@@ -201,6 +294,7 @@ export default function App() {
   };
 
   const handleEditorScroll = (e) => {
+
     if (!lineNumsRef.current) return;
 
     lineNumsRef.current.scrollTop =
@@ -220,6 +314,7 @@ export default function App() {
       )}
 
       <header className="hdr">
+
         <div className="hdr-brand">
           <span className="brand-glyph">◈</span>
           <span className="brand-name">CodeSense</span>
@@ -229,13 +324,16 @@ export default function App() {
         <span className="hdr-hint">
           Ctrl + Enter to review
         </span>
+
       </header>
 
       <div className="workspace">
 
+        {/* EDITOR PANEL */}
         <div className="panel">
 
           <div className="panel-chrome">
+
             <span className="dot dot-r" />
             <span className="dot dot-y" />
             <span className="dot dot-g" />
@@ -312,6 +410,7 @@ export default function App() {
           </div>
 
           <div className="editor-bar">
+
             <span className="stat">{lines} ln</span>
             <span className="stat">{chars} ch</span>
 
@@ -321,13 +420,15 @@ export default function App() {
             >
               {lang.icon} {language}
             </span>
-          </div>
 
+          </div>
         </div>
 
+        {/* REVIEW PANEL */}
         <div className="panel panel-review-pane">
 
           <div className="panel-chrome">
+
             <span className="dot dot-r" />
             <span className="dot dot-y" />
             <span className="dot dot-g" />
@@ -335,26 +436,74 @@ export default function App() {
             <span className="panel-filename">
               ◈ ai-review.md
             </span>
+
           </div>
 
           <div className="review-body">
 
             {loading ? (
+
               <div className="state-loading">
                 <p>Analyzing code...</p>
               </div>
+
             ) : review ? (
+
               <div
                 className="md-root"
                 dangerouslySetInnerHTML={{
                   __html: renderMarkdown(review),
                 }}
               />
+
             ) : (
+
               <div className="state-empty">
                 <div className="empty-glyph">◈</div>
                 <p>AI review appears here</p>
               </div>
+
+            )}
+
+          </div>
+        </div>
+
+        {/* OUTPUT PANEL */}
+        <div className="panel panel-review-pane">
+
+          <div className="panel-chrome">
+
+            <span className="dot dot-r" />
+            <span className="dot dot-y" />
+            <span className="dot dot-g" />
+
+            <span className="panel-filename">
+              ⚡ output.txt
+            </span>
+
+          </div>
+
+          <div className="review-body">
+
+            {executing ? (
+
+              <div className="state-loading">
+                <p>Executing code...</p>
+              </div>
+
+            ) : output ? (
+
+              <pre className="output-box">
+                {output}
+              </pre>
+
+            ) : (
+
+              <div className="state-empty">
+                <div className="empty-glyph">⚡</div>
+                <p>Execution output appears here</p>
+              </div>
+
             )}
 
           </div>
@@ -372,6 +521,16 @@ export default function App() {
           disabled={loading}
         >
           {loading ? "Reviewing..." : "Review Code"}
+        </button>
+
+        <button
+          className={`review-btn ${
+            executing ? "is-loading" : ""
+          }`}
+          onClick={executeCode}
+          disabled={executing}
+        >
+          {executing ? "Running..." : "Run Code"}
         </button>
 
       </div>
