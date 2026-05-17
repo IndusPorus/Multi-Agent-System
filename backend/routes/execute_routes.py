@@ -3,15 +3,23 @@ from fastapi import (
     Depends
 )
 
-from models.request_models import CodeRequest
+from sqlalchemy.orm import Session
+
+from models.request_models import (
+    CodeRequest
+)
 
 from services.code_executor import (
     execute_code_logic
 )
 
-from database import SessionLocal
+from database import (
+    SessionLocal
+)
 
-from models.history import History
+from models.history import (
+    History
+)
 
 from utils.auth import (
     get_current_user
@@ -23,7 +31,9 @@ router = APIRouter()
 
 @router.post("/execute")
 def execute_code(
+
     request: CodeRequest,
+
     current_user = Depends(
         get_current_user
     )
@@ -32,32 +42,43 @@ def execute_code(
     result = execute_code_logic(
 
         request.code,
+
         request.language
     )
 
     # SAVE HISTORY
+
     if current_user:
 
-        db = SessionLocal()
+        db: Session = SessionLocal()
 
-        history = History(
+        try:
 
-            user_id=current_user.id,
+            history = History(
 
-            language=request.language,
+                user_id=current_user.id,
 
-            code=request.code,
+                language=request.language,
 
-            output=result.get(
-                "output",
-                result.get("error", "")
-            ),
+                code=request.code,
 
-            review=""
-        )
+                output=result.get(
+                    "output",
+                    result.get(
+                        "error",
+                        ""
+                    )
+                ),
 
-        db.add(history)
+                review=""
+            )
 
-        db.commit()
+            db.add(history)
+
+            db.commit()
+
+        finally:
+
+            db.close()
 
     return result

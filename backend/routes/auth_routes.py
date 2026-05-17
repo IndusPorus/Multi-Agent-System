@@ -1,9 +1,11 @@
 from fastapi import APIRouter
+
 from pydantic import BaseModel
 
 from sqlalchemy.orm import Session
 
 from database import SessionLocal
+
 from models.user import User
 
 from passlib.context import CryptContext
@@ -22,7 +24,9 @@ router = APIRouter()
 # PASSWORD HASHING
 
 pwd_context = CryptContext(
+
     schemes=["bcrypt"],
+
     deprecated="auto"
 )
 
@@ -41,12 +45,14 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60
 class SignupRequest(BaseModel):
 
     username: str
+
     password: str
 
 
 class LoginRequest(BaseModel):
 
     username: str
+
     password: str
 
 
@@ -57,16 +63,21 @@ def create_access_token(data: dict):
     to_encode = data.copy()
 
     expire = datetime.utcnow() + timedelta(
+
         minutes=ACCESS_TOKEN_EXPIRE_MINUTES
     )
 
     to_encode.update({
+
         "exp": expire
     })
 
     encoded_jwt = jwt.encode(
+
         to_encode,
+
         SECRET_KEY,
+
         algorithm=ALGORITHM
     )
 
@@ -80,34 +91,49 @@ def signup(data: SignupRequest):
 
     db: Session = SessionLocal()
 
-    existing_user = db.query(User).filter(
-        User.username == data.username
-    ).first()
+    try:
 
-    if existing_user:
+        existing_user = db.query(User).filter(
+
+            User.username == data.username
+
+        ).first()
+
+        if existing_user:
+
+            return {
+
+                "error":
+                "Username already exists"
+            }
+
+        hashed_password = pwd_context.hash(
+
+            data.password
+        )
+
+        new_user = User(
+
+            username=data.username,
+
+            password=hashed_password
+        )
+
+        db.add(new_user)
+
+        db.commit()
+
+        db.refresh(new_user)
 
         return {
-            "error": "Username already exists"
+
+            "message":
+            "User created successfully"
         }
 
-    hashed_password = pwd_context.hash(
-        data.password
-    )
+    finally:
 
-    new_user = User(
-        username=data.username,
-        password=hashed_password
-    )
-
-    db.add(new_user)
-
-    db.commit()
-
-    db.refresh(new_user)
-
-    return {
-        "message": "User created successfully"
-    }
+        db.close()
 
 
 # LOGIN ROUTE
@@ -117,35 +143,51 @@ def login(data: LoginRequest):
 
     db: Session = SessionLocal()
 
-    user = db.query(User).filter(
-        User.username == data.username
-    ).first()
+    try:
 
-    if not user:
+        user = db.query(User).filter(
+
+            User.username == data.username
+
+        ).first()
+
+        if not user:
+
+            return {
+
+                "error":
+                "Invalid username or password"
+            }
+
+        valid_password = pwd_context.verify(
+
+            data.password,
+
+            user.password
+        )
+
+        if not valid_password:
+
+            return {
+
+                "error":
+                "Invalid username or password"
+            }
+
+        access_token = create_access_token({
+
+            "sub": user.username,
+
+            "user_id": user.id
+        })
 
         return {
-            "error": "Invalid username or password"
+
+            "access_token": access_token,
+
+            "token_type": "bearer"
         }
 
-    valid_password = pwd_context.verify(
-        data.password,
-        user.password
-    )
+    finally:
 
-    if not valid_password:
-
-        return {
-            "error": "Invalid username or password"
-        }
-
-    access_token = create_access_token({
-
-        "sub": user.username,
-        "user_id": user.id
-    })
-
-    return {
-
-        "access_token": access_token,
-        "token_type": "bearer"
-    }
+        db.close()

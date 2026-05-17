@@ -50,6 +50,7 @@ function Toast({
   }, [onClose]);
 
   return (
+
     <div className={`toast toast-${type}`}>
       {message}
     </div>
@@ -59,8 +60,6 @@ function Toast({
 
 export default function App() {
 
-  // AUTH STATE
-
   const [loggedInUser,
     setLoggedInUser] = useState(
 
@@ -69,8 +68,8 @@ export default function App() {
     ) || ""
   );
 
-
-  // EDITOR STATE
+  const [sidebarOpen,
+    setSidebarOpen] = useState(false);
 
   const [code, setCode] = useState(
 
@@ -92,6 +91,9 @@ for i in range(5):
   const [output,
     setOutput] = useState("");
 
+  const [history,
+    setHistory] = useState([]);
+
   const [loading,
     setLoading] = useState(false);
 
@@ -107,6 +109,16 @@ for i in range(5):
     return "http://127.0.0.1:8000";
 
   }, []);
+
+
+  useEffect(() => {
+
+    if (loggedInUser) {
+
+      fetchHistory();
+    }
+
+  }, [loggedInUser]);
 
 
   const lang =
@@ -131,8 +143,6 @@ for i in range(5):
   };
 
 
-  // LOGOUT
-
   const logout = () => {
 
     localStorage.removeItem(
@@ -147,7 +157,36 @@ for i in range(5):
   };
 
 
-  // REVIEW CODE
+  const fetchHistory = async () => {
+
+    try {
+
+      const res = await fetch(
+
+        `${apiBase}/history`,
+
+        {
+          headers: {
+
+            Authorization:
+              `Bearer ${localStorage.getItem("token")}`,
+          },
+        }
+      );
+
+      const data = await res.json();
+
+      if (!data.error) {
+
+        setHistory(data);
+      }
+
+    } catch (err) {
+
+      console.error(err);
+    }
+  };
+
 
   const reviewCode = async () => {
 
@@ -224,8 +263,6 @@ for i in range(5):
   };
 
 
-  // EXECUTE CODE
-
   const executeCode = async () => {
 
     if (!code.trim()) {
@@ -279,6 +316,8 @@ for i in range(5):
         "Execution completed!"
       );
 
+      fetchHistory();
+
     } catch (err) {
 
       console.error(err);
@@ -309,11 +348,10 @@ for i in range(5):
   };
 
 
-  // SHOW LOGIN SCREEN FIRST
-
   if (!loggedInUser) {
 
     return (
+
       <Auth
         onLogin={
           setLoggedInUser
@@ -338,320 +376,425 @@ for i in range(5):
         />
       )}
 
-      <header className="hdr">
 
-        <div className="hdr-brand">
+      {/* SIDEBAR */}
 
-          <span className="brand-glyph">
-            ◈
-          </span>
+      <div className={`sidebar ${sidebarOpen ? "open" : ""}`}>
 
-          <span className="brand-name">
-            CodeSense
-          </span>
+        <div className="sidebar-header">
 
-          <span className="brand-tag">
-            AI
-          </span>
+          <h2>History</h2>
 
-        </div>
-
-        <div className="user-bar">
-
-          <span>
-            Welcome,
-            {" "}
-            {loggedInUser}
-          </span>
-
-          <button onClick={logout}>
-            Logout
+          <button
+            className="close-btn"
+            onClick={() =>
+              setSidebarOpen(false)
+            }
+          >
+            ✕
           </button>
 
         </div>
 
-      </header>
+
+        <div className="history-body">
+
+          {
+            history.length === 0 ? (
+
+              <div className="state-empty">
+
+                <p>No history yet</p>
+
+              </div>
+
+            ) : (
+
+              history.map((item) => (
+
+                <div
+                  key={item.id}
+                  className="history-card"
+
+                  onClick={() => {
+
+                    setCode(item.code);
+
+                    setLanguage(item.language);
+
+                    setOutput(item.output);
+
+                    setReview(item.review);
+
+                    setSidebarOpen(false);
+                  }}
+                >
+
+                  <h4>
+                    {item.language}
+                  </h4>
+
+                  <pre>
+                    {
+                      item.code.slice(0, 80)
+                    }
+                  </pre>
+
+                </div>
+              ))
+            )
+          }
+
+        </div>
+      </div>
 
 
-      <div className="workspace">
+      {/* OVERLAY */}
 
-        {/* EDITOR */}
+      {
+        sidebarOpen && (
 
-        <div className="panel">
+          <div
+            className="overlay"
+            onClick={() =>
+              setSidebarOpen(false)
+            }
+          />
+        )
+      }
 
-          <div className="panel-chrome">
 
-            <span className="dot dot-r" />
-            <span className="dot dot-y" />
-            <span className="dot dot-g" />
+      <div className="main-content">
 
-            <span className="panel-filename">
+        <header className="hdr">
 
-              {lang.icon}
+          <div className="hdr-left">
+
+            <button
+              className="menu-btn"
+              onClick={() =>
+                setSidebarOpen(true)
+              }
+            >
+              ☰
+            </button>
+
+            <div className="hdr-brand">
+
+              <span className="brand-glyph">
+                ◈
+              </span>
+
+              <span className="brand-name">
+                CodeSense
+              </span>
+
+              <span className="brand-tag">
+                AI
+              </span>
+
+            </div>
+
+          </div>
+
+          <div className="user-bar">
+
+            <span>
+              Welcome,
               {" "}
-              editor.{lang.ext}
-
+              {loggedInUser}
             </span>
 
-            <div className="chrome-actions">
+            <button onClick={logout}>
+              Logout
+            </button>
 
-              <select
-                className="lang-pick"
-                value={language}
-                onChange={(e) =>
-                  setLanguage(
-                    e.target.value
-                  )
+          </div>
+
+        </header>
+
+
+        <div className="workspace">
+
+          {/* EDITOR */}
+
+          <div className="panel">
+
+            <div className="panel-chrome">
+
+              <span className="dot dot-r" />
+              <span className="dot dot-y" />
+              <span className="dot dot-g" />
+
+              <span className="panel-filename">
+
+                {lang.icon}
+                {" "}
+                editor.{lang.ext}
+
+              </span>
+
+              <div className="chrome-actions">
+
+                <select
+                  className="lang-pick"
+                  value={language}
+                  onChange={(e) =>
+                    setLanguage(
+                      e.target.value
+                    )
+                  }
+                >
+
+                  {Object.entries(
+                    LANGUAGE_CONFIG
+                  ).map(([l, v]) => (
+
+                    <option
+                      key={l}
+                      value={l}
+                    >
+                      {v.icon} {l}
+                    </option>
+
+                  ))}
+
+                </select>
+
+                <button
+                  className="cta-ghost cta-red"
+                  onClick={clearAll}
+                >
+                  ✕
+                </button>
+
+              </div>
+            </div>
+
+
+            <div className="editor-wrap">
+
+              <Editor
+
+                height="70vh"
+
+                defaultLanguage="python"
+
+                language={
+                  language === "Python"
+                    ? "python"
+                    : language === "JavaScript"
+                    ? "javascript"
+                    : language === "Java"
+                    ? "java"
+                    : "cpp"
                 }
+
+                theme="vs-dark"
+
+                value={code}
+
+                onChange={(value) =>
+                  setCode(value || "")
+                }
+
+                onMount={(editor) => {
+
+                  editor.focus();
+
+                }}
+
+                options={{
+
+                  fontSize: 14,
+
+                  minimap: {
+                    enabled: false,
+                  },
+
+                  automaticLayout: true,
+
+                  scrollBeyondLastLine:
+                    false,
+
+                  wordWrap: "on",
+
+                  tabSize: 2,
+
+                  fontFamily:
+                    "Fira Code, monospace",
+
+                  cursorBlinking:
+                    "smooth",
+
+                  cursorStyle:
+                    "line",
+
+                  cursorWidth: 3,
+
+                  smoothScrolling: true,
+                }}
+              />
+
+            </div>
+
+
+            <div className="editor-bar">
+
+              <span className="stat">
+                {lines} ln
+              </span>
+
+              <span className="stat">
+                {chars} ch
+              </span>
+
+              <span
+                className="stat"
+                style={{
+                  color: lang.color,
+                }}
               >
-
-                {Object.entries(
-                  LANGUAGE_CONFIG
-                ).map(([l, v]) => (
-
-                  <option
-                    key={l}
-                    value={l}
-                  >
-                    {v.icon} {l}
-                  </option>
-
-                ))}
-
-              </select>
-
-              <button
-                className="cta-ghost cta-red"
-                onClick={clearAll}
-              >
-                ✕
-              </button>
+                {lang.icon} {language}
+              </span>
 
             </div>
           </div>
 
 
-          <div className="editor-wrap">
+          {/* REVIEW */}
 
-            <Editor
+          <div className="panel panel-review-pane">
 
-              height="70vh"
+            <div className="panel-chrome">
 
-              defaultLanguage="python"
+              <span className="dot dot-r" />
+              <span className="dot dot-y" />
+              <span className="dot dot-g" />
 
-              language={
-                language === "Python"
-                  ? "python"
-                  : language === "JavaScript"
-                  ? "javascript"
-                  : language === "Java"
-                  ? "java"
-                  : "cpp"
-              }
+              <span className="panel-filename">
+                ◈ ai-review.md
+              </span>
 
-              theme="vs-dark"
+            </div>
 
-              value={code}
+            <div className="review-body">
 
-              onChange={(value) =>
-                setCode(value || "")
-              }
+              {loading ? (
 
-              onMount={(editor) => {
-
-                editor.focus();
-
-              }}
-
-              options={{
-
-                fontSize: 14,
-
-                minimap: {
-                  enabled: false,
-                },
-
-                automaticLayout: true,
-
-                scrollBeyondLastLine:
-                  false,
-
-                wordWrap: "on",
-
-                tabSize: 2,
-
-                fontFamily:
-                  "Fira Code, monospace",
-
-                cursorBlinking:
-                  "smooth",
-
-                cursorStyle:
-                  "line",
-
-                cursorWidth: 3,
-
-                smoothScrolling: true,
-              }}
-            />
-
-          </div>
-
-
-          <div className="editor-bar">
-
-            <span className="stat">
-              {lines} ln
-            </span>
-
-            <span className="stat">
-              {chars} ch
-            </span>
-
-            <span
-              className="stat"
-              style={{
-                color: lang.color,
-              }}
-            >
-              {lang.icon} {language}
-            </span>
-
-          </div>
-        </div>
-
-
-        {/* REVIEW */}
-
-        <div className="panel panel-review-pane">
-
-          <div className="panel-chrome">
-
-            <span className="dot dot-r" />
-            <span className="dot dot-y" />
-            <span className="dot dot-g" />
-
-            <span className="panel-filename">
-              ◈ ai-review.md
-            </span>
-
-          </div>
-
-          <div className="review-body">
-
-            {loading ? (
-
-              <div className="state-loading">
-                <p>Reviewing...</p>
-              </div>
-
-            ) : review ? (
-
-              <pre className="output-box">
-                {review}
-              </pre>
-
-            ) : (
-
-              <div className="state-empty">
-
-                <div className="empty-glyph">
-                  ◈
+                <div className="state-loading">
+                  <p>Reviewing...</p>
                 </div>
 
-                <p>
-                  AI review appears here
-                </p>
+              ) : review ? (
 
-              </div>
+                <pre className="output-box">
+                  {review}
+                </pre>
 
-            )}
+              ) : (
 
-          </div>
-        </div>
+                <div className="state-empty">
 
+                  <div className="empty-glyph">
+                    ◈
+                  </div>
 
-        {/* OUTPUT */}
+                  <p>
+                    AI review appears here
+                  </p>
 
-        <div className="panel panel-review-pane">
-
-          <div className="panel-chrome">
-
-            <span className="dot dot-r" />
-            <span className="dot dot-y" />
-            <span className="dot dot-g" />
-
-            <span className="panel-filename">
-              ⚡ output.txt
-            </span>
-
-          </div>
-
-          <div className="review-body">
-
-            {executing ? (
-
-              <div className="state-loading">
-                <p>Executing...</p>
-              </div>
-
-            ) : output ? (
-
-              <pre className="output-box">
-                {output}
-              </pre>
-
-            ) : (
-
-              <div className="state-empty">
-
-                <div className="empty-glyph">
-                  ⚡
                 </div>
 
-                <p>
-                  Output appears here
-                </p>
+              )}
 
-              </div>
-
-            )}
-
+            </div>
           </div>
+
+
+          {/* OUTPUT */}
+
+          <div className="panel panel-review-pane">
+
+            <div className="panel-chrome">
+
+              <span className="dot dot-r" />
+              <span className="dot dot-y" />
+              <span className="dot dot-g" />
+
+              <span className="panel-filename">
+                ⚡ output.txt
+              </span>
+
+            </div>
+
+            <div className="review-body">
+
+              {executing ? (
+
+                <div className="state-loading">
+                  <p>Executing...</p>
+                </div>
+
+              ) : output ? (
+
+                <pre className="output-box">
+                  {output}
+                </pre>
+
+              ) : (
+
+                <div className="state-empty">
+
+                  <div className="empty-glyph">
+                    ⚡
+                  </div>
+
+                  <p>
+                    Output appears here
+                  </p>
+
+                </div>
+
+              )}
+
+            </div>
+          </div>
+
         </div>
 
-      </div>
 
+        <div className="action-bar">
 
-      <div className="action-bar">
+          <button
+            className="review-btn"
+            onClick={reviewCode}
+            disabled={loading}
+          >
 
-        <button
-          className="review-btn"
-          onClick={reviewCode}
-          disabled={loading}
-        >
+            {
+              loading
+                ? "Reviewing..."
+                : "Review Code"
+            }
 
-          {
-            loading
-              ? "Reviewing..."
-              : "Review Code"
-          }
+          </button>
 
-        </button>
+          <button
+            className="review-btn"
+            onClick={executeCode}
+            disabled={executing}
+          >
 
-        <button
-          className="review-btn"
-          onClick={executeCode}
-          disabled={executing}
-        >
+            {
+              executing
+                ? "Running..."
+                : "Run Code"
+            }
 
-          {
-            executing
-              ? "Running..."
-              : "Run Code"
-          }
+          </button>
 
-        </button>
+        </div>
 
       </div>
 
