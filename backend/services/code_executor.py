@@ -1,79 +1,136 @@
 import subprocess
 import tempfile
 import os
+import uuid
+
+
+LANGUAGE_CONFIG = {
+
+    "Python": {
+        "image": "python:3.11",
+        "filename": "code.py",
+        "command": [
+            "python",
+            "/app/code.py"
+        ]
+    },
+
+    "JavaScript": {
+        "image": "node:20",
+        "filename": "code.js",
+        "command": [
+            "node",
+            "/app/code.js"
+        ]
+    },
+
+    "Java": {
+        "image": "eclipse-temurin:21",
+        "filename": "Main.java",
+        "command": [
+            "sh",
+            "-c",
+            "javac /app/Main.java && java -cp /app Main"
+        ]
+    },
+
+    "C++": {
+        "image": "gcc:13",
+        "filename": "main.cpp",
+        "command": [
+            "sh",
+            "-c",
+            "g++ /app/main.cpp -o /app/a.out && /app/a.out"
+        ]
+    }
+}
 
 
 def execute_code_logic(code: str, language: str):
 
+    container_name = f"sandbox_{uuid.uuid4().hex[:8]}"
+
     try:
 
-        # PYTHON DOCKER SANDBOX
-        if language == "Python":
+        if language not in LANGUAGE_CONFIG:
 
-            with tempfile.NamedTemporaryFile(
-                delete=False,
-                suffix=".py",
-                mode="w",
+            return {
+                "error": "Language not supported yet"
+            }
+
+        config = LANGUAGE_CONFIG[language]
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+
+            file_path = os.path.join(
+                temp_dir,
+                config["filename"]
+            )
+
+            with open(
+                file_path,
+                "w",
                 encoding="utf-8"
-            ) as temp:
+            ) as f:
 
-                temp.write(code)
+                f.write(code)
 
-                temp_path = os.path.abspath(temp.name)
+            docker_command = [
+
+                "docker",
+                "run",
+
+                "--name",
+                container_name,
+
+                "--rm",
+
+                "--network",
+                "none",
+
+                "--memory",
+                "256m",
+
+                "--cpus",
+                "1",
+
+                "-v",
+                f"{temp_dir}:/app",
+
+                config["image"],
+
+                *config["command"]
+            ]
 
             result = subprocess.run(
 
-                [
-                    "docker",
-                    "run",
-                    "--rm",
-
-                    # SECURITY LIMITS
-                    "--network",
-                    "none",
-
-                    "--memory",
-                    "256m",
-
-                    "--cpus",
-                    "1",
-
-                    # MOUNT CODE FILE
-                    "-v",
-                    f"{temp_path}:/app/code.py",
-
-                    # PYTHON IMAGE
-                    "python:3.11",
-
-                    # EXECUTE FILE
-                    "python",
-                    "/app/code.py"
-                ],
+                docker_command,
 
                 capture_output=True,
                 text=True,
                 timeout=5
             )
 
-            # DELETE TEMP FILE
-            os.remove(temp_path)
-
             output = (
                 result.stdout or
-                result.stderr
+                result.stderr or
+                "No output"
             )
 
             return {
                 "output": output
             }
 
-        else:
-
-            return {
-                "error": "Language not supported yet"
-            }
-
     except subprocess.TimeoutExpired:
+
+        subprocess.run(
+            [
+                "docker",
+                "kill",
+                container_name
+            ],
+            capture_output=True
+        )
 
         return {
             "error": "Code execution timed out"
@@ -84,3 +141,15 @@ def execute_code_logic(code: str, language: str):
         return {
             "error": str(e)
         }
+
+    finally:
+
+        subprocess.run(
+            [
+                "docker",
+                "rm",
+                "-f",
+                container_name
+            ],
+            capture_output=True
+        )

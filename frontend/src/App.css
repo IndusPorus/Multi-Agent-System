@@ -627,3 +627,79 @@ body {
   .hdr-hint { display: none; }
   .review-btn { padding: 12px 28px; font-size: 14px; }
 }
+/* ══════════════════════════════
+   MONACO EDITOR FIXES
+══════════════════════════════ */
+
+.editor-wrap {
+  height: 70vh;
+  overflow: hidden;
+  position: relative;
+}
+
+.monaco-editor,
+.monaco-editor-background,
+.monaco-editor .inputarea.ime-input {
+  background-color: #1e1e1e !important;
+}
+
+.monaco-editor .margin {
+  background-color: #1e1e1e !important;
+}
+
+.monaco-editor .cursor {
+  background-color: #ffffff !important;
+  border-color: #ffffff !important;
+}
+
+.monaco-mouse-cursor-text {
+  caret-color: #ffffff !important;
+}
+
+.monaco-editor {
+  padding-top: 10px;
+  border-radius: 12px;
+}
+
+.monaco-scrollable-element
+  > .scrollbar
+  > .slider {
+
+  background: rgba(255,255,255,0.2) !important;
+}
+
+.monaco-editor,
+.monaco-editor * {
+  transition: none !important;
+}
+/* FINAL MONACO CURSOR FIX */
+
+.monaco-editor textarea {
+  color: white !important;
+  caret-color: white !important;
+}
+
+.monaco-editor .inputarea {
+  color: white !important;
+  caret-color: white !important;
+}
+
+.monaco-editor .inputarea.ime-input {
+  color: white !important;
+  caret-color: white !important;
+  opacity: 1 !important;
+}
+
+.monaco-editor .cursor {
+  background: white !important;
+  border-left: 2px solid white !important;
+}
+
+.monaco-editor .view-lines {
+  cursor: text !important;
+}
+
+.monaco-editor textarea:focus,
+.monaco-editor div:focus {
+  outline: none !important;
+}

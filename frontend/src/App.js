@@ -26,105 +26,57 @@ function Toast({ message, type, onClose }) {
   );
 }
 
-function escapeHtml(s) {
-
-  return String(s)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-function renderMarkdown(raw) {
-
-  if (!raw) return "";
-
-  let safe = escapeHtml(raw);
-
-  const blocks = [];
-
-  safe = safe.replace(
-    /```[\w-]*\n?([\s\S]*?)```/g,
-    (_, code) => {
-
-      const idx = blocks.push(code) - 1;
-
-      return `@@CODEBLOCK_${idx}@@`;
-    }
-  );
-
-  safe = safe
-    .replace(/^### (.+)$/gm, '<h3 class="md-h3">$1</h3>')
-    .replace(/^## (.+)$/gm, '<h2 class="md-h2">$1</h2>')
-    .replace(/^# (.+)$/gm, '<h1 class="md-h1">$1</h1>')
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .replace(/`([^`]+)`/g, '<code class="md-inline">$1</code>')
-    .replace(/^---$/gm, '<hr class="md-hr" />');
-
-  safe = safe
-    .replace(
-      /^\s*\d+\.\s+(.+)$/gm,
-      '<div class="md-item md-num"><span class="md-bullet">›</span><span>$1</span></div>'
-    )
-    .replace(
-      /^\s*[-*]\s+(.+)$/gm,
-      '<div class="md-item"><span class="md-bullet">•</span><span>$1</span></div>'
-    );
-
-  const chunks = safe
-    .split(/\n{2,}/)
-    .filter(Boolean);
-
-  const html = chunks
-    .map((c) =>
-      /^<h\d|^<hr|^<div class="md-item/.test(c.trim())
-        ? c
-        : `<p class="md-p">${c.replace(/\n/g, "<br/>")}</p>`
-    )
-    .join("");
-
-  return html.replace(
-    /@@CODEBLOCK_(\d+)@@/g,
-    (_, n) => {
-
-      const code = blocks[Number(n)] ?? "";
-
-      return `
-        <div class="md-block">
-          <pre><code>${code}</code></pre>
-        </div>
-      `;
-    }
-  );
-}
-
 export default function App() {
 
-  const [code, setCode] = useState("");
-  const [language, setLanguage] = useState("Python");
+  const [code, setCode] = useState(
+`print("Hello Monaco")
 
-  const [review, setReview] = useState("");
-  const [output, setOutput] = useState("");
+for i in range(5):
+    print(i)
+`
+  );
 
-  const [loading, setLoading] = useState(false);
-  const [executing, setExecuting] = useState(false);
+  const [language, setLanguage] =
+    useState("Python");
 
-  const [toast, setToast] = useState(null);
+  const [review, setReview] =
+    useState("");
 
-  const lines = code.split("\n").length;
+  const [output, setOutput] =
+    useState("");
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [executing, setExecuting] =
+    useState(false);
+
+  const [toast, setToast] =
+    useState(null);
+
+  const lang =
+    LANGUAGE_CONFIG[language];
+
+  const lines =
+    code.split("\n").length;
+
   const chars = code.length;
-
-  const lang = LANGUAGE_CONFIG[language];
 
   const notify = (
     message,
     type = "success"
-  ) => setToast({ message, type });
+  ) => {
+
+    setToast({
+      message,
+      type,
+    });
+  };
 
   const apiBase = useMemo(() => {
+
     return "http://127.0.0.1:8000";
+
   }, []);
 
   // REVIEW CODE
@@ -141,8 +93,6 @@ export default function App() {
     }
 
     setLoading(true);
-
-    setReview("");
 
     try {
 
@@ -165,32 +115,16 @@ export default function App() {
 
       const data = await res.json();
 
-      if (!res.ok || data.error) {
-
-        setReview(
-          data.error ||
-          "Backend error occurred."
-        );
-
-        notify(
-          "Review failed.",
-          "error"
-        );
-
-        return;
-      }
-
-      const finalReview =
+      setReview(
         data.review ||
         data.response ||
         data.result ||
         data.message ||
-        "";
-
-      setReview(finalReview);
+        "No review returned."
+      );
 
       notify(
-        "Review generated successfully!"
+        "Review generated!"
       );
 
     } catch (err) {
@@ -198,11 +132,11 @@ export default function App() {
       console.error(err);
 
       setReview(
-        `Cannot connect to backend at ${apiBase}`
+        "Backend connection failed."
       );
 
       notify(
-        "Connection error.",
+        "Review failed.",
         "error"
       );
 
@@ -227,8 +161,6 @@ export default function App() {
 
     setExecuting(true);
 
-    setOutput("");
-
     try {
 
       const res = await fetch(
@@ -250,43 +182,26 @@ export default function App() {
 
       const data = await res.json();
 
-      if (!res.ok || data.error) {
-
-        setOutput(
-          String(
-            data.error ||
-            "Execution failed."
-          )
-        );
-
-        notify(
-          "Execution failed.",
-          "error"
-        );
-
-        return;
-      }
-
       setOutput(
-        String(
-          data.output ||
-          data.error ||
-          "No output"
-        )
+        data.output ||
+        data.error ||
+        "No output"
       );
 
-      notify("Code executed!");
+      notify(
+        "Execution completed!"
+      );
 
     } catch (err) {
 
       console.error(err);
 
       setOutput(
-        `Cannot connect to backend at ${apiBase}`
+        "Execution failed."
       );
 
       notify(
-        "Execution error.",
+        "Execution failed.",
         "error"
       );
 
@@ -294,20 +209,6 @@ export default function App() {
 
       setExecuting(false);
     }
-  };
-
-  const copyText = async (
-    text,
-    label
-  ) => {
-
-    if (!text) return;
-
-    await navigator.clipboard.writeText(
-      text
-    );
-
-    notify(`${label} copied!`);
   };
 
   const clearAll = () => {
@@ -326,7 +227,6 @@ export default function App() {
       {toast && (
 
         <Toast
-          key={Date.now()}
           message={toast.message}
           type={toast.type}
           onClose={() =>
@@ -353,15 +253,12 @@ export default function App() {
 
         </div>
 
-        <span className="hdr-hint">
-          Ctrl + Enter to review
-        </span>
-
       </header>
 
       <div className="workspace">
 
         {/* EDITOR PANEL */}
+
         <div className="panel">
 
           <div className="panel-chrome">
@@ -385,29 +282,21 @@ export default function App() {
                   )
                 }
               >
+
                 {Object.entries(
                   LANGUAGE_CONFIG
                 ).map(([l, v]) => (
+
                   <option
                     key={l}
                     value={l}
                   >
                     {v.icon} {l}
                   </option>
-                ))}
-              </select>
 
-              <button
-                className="cta-ghost"
-                onClick={() =>
-                  copyText(
-                    code,
-                    "Code"
-                  )
-                }
-              >
-                ⎘
-              </button>
+                ))}
+
+              </select>
 
               <button
                 className="cta-ghost cta-red"
@@ -422,16 +311,17 @@ export default function App() {
           <div className="editor-wrap">
 
             <Editor
+
               height="70vh"
+
+              defaultLanguage="python"
 
               language={
                 language === "Python"
                   ? "python"
-                  : language ===
-                    "JavaScript"
+                  : language === "JavaScript"
                   ? "javascript"
-                  : language ===
-                    "Java"
+                  : language === "Java"
                   ? "java"
                   : "cpp"
               }
@@ -446,14 +336,21 @@ export default function App() {
                 setCode(value || "")
               }
 
+              onMount={(editor) => {
+
+                editor.focus();
+
+              }}
+
               options={{
+
                 fontSize: 14,
 
                 minimap: {
                   enabled: false,
                 },
 
-                automaticLayout: false,
+                automaticLayout: true,
 
                 scrollBeyondLastLine:
                   false,
@@ -464,6 +361,19 @@ export default function App() {
 
                 fontFamily:
                   "Fira Code, monospace",
+
+                cursorBlinking:
+                  "smooth",
+
+                cursorStyle:
+                  "line",
+
+                cursorWidth: 3,
+
+                renderLineHighlight:
+                  "all",
+
+                smoothScrolling: true,
               }}
             />
 
@@ -492,6 +402,7 @@ export default function App() {
         </div>
 
         {/* REVIEW PANEL */}
+
         <div className="panel panel-review-pane">
 
           <div className="panel-chrome">
@@ -512,21 +423,15 @@ export default function App() {
 
               <div className="state-loading">
                 <p>
-                  Analyzing code...
+                  Reviewing...
                 </p>
               </div>
 
             ) : review ? (
 
-              <div
-                className="md-root"
-                dangerouslySetInnerHTML={{
-                  __html:
-                    renderMarkdown(
-                      review
-                    ),
-                }}
-              />
+              <pre className="output-box">
+                {review}
+              </pre>
 
             ) : (
 
@@ -548,6 +453,7 @@ export default function App() {
         </div>
 
         {/* OUTPUT PANEL */}
+
         <div className="panel panel-review-pane">
 
           <div className="panel-chrome">
@@ -568,7 +474,7 @@ export default function App() {
 
               <div className="state-loading">
                 <p>
-                  Executing code...
+                  Executing...
                 </p>
               </div>
 
@@ -587,7 +493,7 @@ export default function App() {
                 </div>
 
                 <p>
-                  Execution output appears here
+                  Output appears here
                 </p>
 
               </div>
@@ -602,31 +508,27 @@ export default function App() {
       <div className="action-bar">
 
         <button
-          className={`review-btn ${
-            loading
-              ? "is-loading"
-              : ""
-          }`}
+          className="review-btn"
           onClick={reviewCode}
           disabled={loading}
         >
-          {loading
-            ? "Reviewing..."
-            : "Review Code"}
+          {
+            loading
+              ? "Reviewing..."
+              : "Review Code"
+          }
         </button>
 
         <button
-          className={`review-btn ${
-            executing
-              ? "is-loading"
-              : ""
-          }`}
+          className="review-btn"
           onClick={executeCode}
           disabled={executing}
         >
-          {executing
-            ? "Running..."
-            : "Run Code"}
+          {
+            executing
+              ? "Running..."
+              : "Run Code"
+          }
         </button>
 
       </div>
