@@ -1,19 +1,49 @@
 import { useEffect, useMemo, useState } from "react";
 import Editor from "@monaco-editor/react";
+
+import Auth from "./Auth";
+
 import "./App.css";
 
 const LANGUAGE_CONFIG = {
-  JavaScript: { icon: "⚡", ext: "js", color: "#f7df1e" },
-  Python: { icon: "🐍", ext: "py", color: "#4db6ac" },
-  Java: { icon: "☕", ext: "java", color: "#ff8a65" },
-  "C++": { icon: "⚙️", ext: "cpp", color: "#64b5f6" },
+  JavaScript: {
+    icon: "⚡",
+    ext: "js",
+    color: "#f7df1e",
+  },
+
+  Python: {
+    icon: "🐍",
+    ext: "py",
+    color: "#4db6ac",
+  },
+
+  Java: {
+    icon: "☕",
+    ext: "java",
+    color: "#ff8a65",
+  },
+
+  "C++": {
+    icon: "⚙️",
+    ext: "cpp",
+    color: "#64b5f6",
+  },
 };
 
-function Toast({ message, type, onClose }) {
+
+function Toast({
+  message,
+  type,
+  onClose,
+}) {
 
   useEffect(() => {
 
-    const t = setTimeout(onClose, 3000);
+    const t = setTimeout(
+      onClose,
+      3000
+    );
 
     return () => clearTimeout(t);
 
@@ -26,9 +56,24 @@ function Toast({ message, type, onClose }) {
   );
 }
 
+
 export default function App() {
 
+  // AUTH STATE
+
+  const [loggedInUser,
+    setLoggedInUser] = useState(
+
+    localStorage.getItem(
+      "username"
+    ) || ""
+  );
+
+
+  // EDITOR STATE
+
   const [code, setCode] = useState(
+
 `print("Hello Monaco")
 
 for i in range(5):
@@ -36,23 +81,33 @@ for i in range(5):
 `
   );
 
-  const [language, setLanguage] =
-    useState("Python");
+  const [language,
+    setLanguage] = useState(
+      "Python"
+    );
 
-  const [review, setReview] =
-    useState("");
+  const [review,
+    setReview] = useState("");
 
-  const [output, setOutput] =
-    useState("");
+  const [output,
+    setOutput] = useState("");
 
-  const [loading, setLoading] =
-    useState(false);
+  const [loading,
+    setLoading] = useState(false);
 
-  const [executing, setExecuting] =
-    useState(false);
+  const [executing,
+    setExecuting] = useState(false);
 
-  const [toast, setToast] =
-    useState(null);
+  const [toast,
+    setToast] = useState(null);
+
+
+  const apiBase = useMemo(() => {
+
+    return "http://127.0.0.1:8000";
+
+  }, []);
+
 
   const lang =
     LANGUAGE_CONFIG[language];
@@ -60,7 +115,9 @@ for i in range(5):
   const lines =
     code.split("\n").length;
 
-  const chars = code.length;
+  const chars =
+    code.length;
+
 
   const notify = (
     message,
@@ -73,13 +130,25 @@ for i in range(5):
     });
   };
 
-  const apiBase = useMemo(() => {
 
-    return "http://127.0.0.1:8000";
+  // LOGOUT
 
-  }, []);
+  const logout = () => {
+
+    localStorage.removeItem(
+      "token"
+    );
+
+    localStorage.removeItem(
+      "username"
+    );
+
+    setLoggedInUser("");
+  };
+
 
   // REVIEW CODE
+
   const reviewCode = async () => {
 
     if (!code.trim()) {
@@ -97,16 +166,23 @@ for i in range(5):
     try {
 
       const res = await fetch(
+
         `${apiBase}/review`,
+
         {
           method: "POST",
 
           headers: {
+
             "Content-Type":
               "application/json",
+
+            Authorization:
+              `Bearer ${localStorage.getItem("token")}`,
           },
 
           body: JSON.stringify({
+
             code,
             language,
           }),
@@ -116,6 +192,7 @@ for i in range(5):
       const data = await res.json();
 
       setReview(
+
         data.review ||
         data.response ||
         data.result ||
@@ -146,7 +223,9 @@ for i in range(5):
     }
   };
 
+
   // EXECUTE CODE
+
   const executeCode = async () => {
 
     if (!code.trim()) {
@@ -164,16 +243,23 @@ for i in range(5):
     try {
 
       const res = await fetch(
+
         `${apiBase}/execute`,
+
         {
           method: "POST",
 
           headers: {
+
             "Content-Type":
               "application/json",
+
+            Authorization:
+              `Bearer ${localStorage.getItem("token")}`,
           },
 
           body: JSON.stringify({
+
             code,
             language,
           }),
@@ -183,6 +269,7 @@ for i in range(5):
       const data = await res.json();
 
       setOutput(
+
         data.output ||
         data.error ||
         "No output"
@@ -211,6 +298,7 @@ for i in range(5):
     }
   };
 
+
   const clearAll = () => {
 
     setCode("");
@@ -219,6 +307,21 @@ for i in range(5):
 
     notify("Cleared.");
   };
+
+
+  // SHOW LOGIN SCREEN FIRST
+
+  if (!loggedInUser) {
+
+    return (
+      <Auth
+        onLogin={
+          setLoggedInUser
+        }
+      />
+    );
+  }
+
 
   return (
 
@@ -253,11 +356,26 @@ for i in range(5):
 
         </div>
 
+        <div className="user-bar">
+
+          <span>
+            Welcome,
+            {" "}
+            {loggedInUser}
+          </span>
+
+          <button onClick={logout}>
+            Logout
+          </button>
+
+        </div>
+
       </header>
+
 
       <div className="workspace">
 
-        {/* EDITOR PANEL */}
+        {/* EDITOR */}
 
         <div className="panel">
 
@@ -268,7 +386,11 @@ for i in range(5):
             <span className="dot dot-g" />
 
             <span className="panel-filename">
-              {lang.icon} editor.{lang.ext}
+
+              {lang.icon}
+              {" "}
+              editor.{lang.ext}
+
             </span>
 
             <div className="chrome-actions">
@@ -308,6 +430,7 @@ for i in range(5):
             </div>
           </div>
 
+
           <div className="editor-wrap">
 
             <Editor
@@ -329,8 +452,6 @@ for i in range(5):
               theme="vs-dark"
 
               value={code}
-
-              loading="Loading editor..."
 
               onChange={(value) =>
                 setCode(value || "")
@@ -370,14 +491,12 @@ for i in range(5):
 
                 cursorWidth: 3,
 
-                renderLineHighlight:
-                  "all",
-
                 smoothScrolling: true,
               }}
             />
 
           </div>
+
 
           <div className="editor-bar">
 
@@ -401,7 +520,8 @@ for i in range(5):
           </div>
         </div>
 
-        {/* REVIEW PANEL */}
+
+        {/* REVIEW */}
 
         <div className="panel panel-review-pane">
 
@@ -422,9 +542,7 @@ for i in range(5):
             {loading ? (
 
               <div className="state-loading">
-                <p>
-                  Reviewing...
-                </p>
+                <p>Reviewing...</p>
               </div>
 
             ) : review ? (
@@ -452,7 +570,8 @@ for i in range(5):
           </div>
         </div>
 
-        {/* OUTPUT PANEL */}
+
+        {/* OUTPUT */}
 
         <div className="panel panel-review-pane">
 
@@ -473,9 +592,7 @@ for i in range(5):
             {executing ? (
 
               <div className="state-loading">
-                <p>
-                  Executing...
-                </p>
+                <p>Executing...</p>
               </div>
 
             ) : output ? (
@@ -505,6 +622,7 @@ for i in range(5):
 
       </div>
 
+
       <div className="action-bar">
 
         <button
@@ -512,11 +630,13 @@ for i in range(5):
           onClick={reviewCode}
           disabled={loading}
         >
+
           {
             loading
               ? "Reviewing..."
               : "Review Code"
           }
+
         </button>
 
         <button
@@ -524,11 +644,13 @@ for i in range(5):
           onClick={executeCode}
           disabled={executing}
         >
+
           {
             executing
               ? "Running..."
               : "Run Code"
           }
+
         </button>
 
       </div>
