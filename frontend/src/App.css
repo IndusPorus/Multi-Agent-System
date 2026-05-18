@@ -201,7 +201,7 @@ body {
   display: grid;
 
   grid-template-columns:
-    2fr 1fr 1fr;
+    2fr 1fr 1fr 1fr;
 
   gap: 20px;
 }
@@ -579,6 +579,41 @@ body {
 }
 
 
+/* STDIN */
+
+.stdin-box {
+
+  width: 100%;
+
+  height: 100%;
+
+  background: #0d1117;
+
+  color: white;
+
+  border: none;
+
+  resize: none;
+
+  padding: 12px;
+
+  font-size: 14px;
+
+  outline: none;
+
+  font-family:
+    "Fira Code",
+    monospace;
+
+  line-height: 1.5;
+}
+
+.stdin-box::placeholder {
+
+  color: #888;
+}
+
+
 /* MONACO FIXES */
 
 .monaco-editor textarea {
@@ -594,7 +629,15 @@ body {
 
 /* RESPONSIVE */
 
-@media (max-width: 1200px) {
+@media (max-width: 1400px) {
+
+  .workspace {
+
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 900px) {
 
   .workspace {
 

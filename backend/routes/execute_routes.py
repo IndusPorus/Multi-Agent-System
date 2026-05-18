@@ -43,10 +43,10 @@ def execute_code(
 
         request.code,
 
-        request.language
-    )
+        request.language,
 
-    # SAVE HISTORY
+        request.stdin
+    )
 
     if current_user:
 

@@ -80,6 +80,9 @@ for i in range(5):
 `
   );
 
+  const [stdin,
+    setStdin] = useState("");
+
   const [language,
     setLanguage] = useState(
       "Python"
@@ -224,6 +227,7 @@ for i in range(5):
 
             code,
             language,
+            stdin,
           }),
         }
       );
@@ -298,7 +302,10 @@ for i in range(5):
           body: JSON.stringify({
 
             code,
+
             language,
+
+            stdin,
           }),
         }
       );
@@ -341,8 +348,12 @@ for i in range(5):
   const clearAll = () => {
 
     setCode("");
+
     setReview("");
+
     setOutput("");
+
+    setStdin("");
 
     notify("Cleared.");
   };
@@ -448,8 +459,6 @@ for i in range(5):
         </div>
       </div>
 
-
-      {/* OVERLAY */}
 
       {
         sidebarOpen && (
@@ -757,6 +766,41 @@ for i in range(5):
                 </div>
 
               )}
+
+            </div>
+          </div>
+
+
+          {/* INPUT */}
+
+          <div className="panel panel-review-pane">
+
+            <div className="panel-chrome">
+
+              <span className="dot dot-r" />
+              <span className="dot dot-y" />
+              <span className="dot dot-g" />
+
+              <span className="panel-filename">
+                ⌨️ input.txt
+              </span>
+
+            </div>
+
+            <div className="review-body">
+
+              <textarea
+
+                value={stdin}
+
+                onChange={(e) =>
+                  setStdin(e.target.value)
+                }
+
+                className="stdin-box"
+
+                placeholder="Enter custom input..."
+              />
 
             </div>
           </div>
